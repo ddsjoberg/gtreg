@@ -1,3 +1,84 @@
+## START OF NEW TABLING WITHOUT STACKING ---------------------------------------
+.create_summary_tbl <- function(data,
+                                variable_summary,
+                                variable_filter,
+                                statistic,
+                                remove_header_row,
+                                zero_symbol = NULL,
+                                labels = NULL,
+                                header_by = "{level}",
+                                by = "by",
+                                by_level_to_hide = "NOT OBSERVED",
+                                digits = NULL,
+                                sort = NULL,
+                                missing_location = "first",
+                                missing_text = "Unknown") {
+  # keep observation that will be tabulated
+  data <- filter(data, !!sym(variable_filter)) %>% dplyr::ungroup()
+
+  if ("ae" %in% variable_summary) {
+    data[["ae"]] <- factor(data[["ae"]])
+
+    # sorting the factor by frequency, if requested
+    if ("ae" %in% sort) {
+      # vector of levels in descending frequency order
+      freg_levels <-
+        data %>%
+        filter(!.data$by %in% "NOT OBSERVED") %>%
+        mutate(
+          ae = forcats::fct_infreq(.data$ae)
+        ) %>%
+        dplyr::pull(.data$ae) %>%
+        levels()
+
+      # re-order AEs by frequency
+      df_ae[["ae"]] <- factor(df_ae[["ae"]], levels = freg_levels)
+    }
+  }
+
+  fn_tbl_ae <-
+    purrr::partial(.fn_tbl,
+                   variable = variable_summary,
+                   by = by,
+                   by_level_to_hide = by_level_to_hide,
+                   label = labels,
+                   statistic = statistic,
+                   header_by = header_by,
+                   remove_header_row = TRUE,
+                   zero_symbol = zero_symbol,
+                   digits = digits,
+                   missing_location = missing_location,
+                   missing_text = missing_text)
+
+  if ("strata" %in% names(data)) {
+    tbl <-
+      gtsummary::tbl_strata(
+        data = data,
+        strata = "strata",
+        .tbl_fun = ~fn_tbl_ae(data = data),
+        .combine_with = "tbl_merge",
+        .header = "{strata}"
+      )
+  }
+  else {
+    tbl <- fn_tbl_ae(data = data)
+  }
+
+  gtsummary::tbl_butcher(tbl)
+}
+
+
+## END OF NEW TABLING WITHOUT STACKING -----------------------------------------
+
+
+
+
+
+
+
+
+
+
 # this function returns a list of tbls, summarizing either AEs or SOC
 .lst_of_tbls <- function(lst_data,
                          variable_summary,
